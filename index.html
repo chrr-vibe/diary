@@ -169,6 +169,8 @@
   .px{display:block;width:32px;height:32px;image-rendering:pixelated;image-rendering:crisp-edges;}
   .wx-tap{border:none;background:transparent;padding:2px;display:flex;border-radius:0;}
   .wx-tap:hover{background:var(--wash);}
+  .q-left{gap:2px;}
+  .q-left .wx-tap{align-items:center;min-height:36px;}
 
   .inp,.txt{
     width:100%;background:transparent;border:2px solid var(--accent);border-radius:999px;
@@ -201,8 +203,8 @@
   .m-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;}
   label.f{display:block;font-size:13px;font-weight:700;margin:12px 0 5px;}
   .ep-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-  .ep-line .inp{width:76px;text-align:center;padding:10px 6px;}
-  .ep-line .inp.y{width:92px;}
+  .ep-line .inp{width:62px;text-align:center;padding:10px 4px;}
+  .ep-line .inp.y{width:80px;}
   .ep-line .u{font-size:14px;margin-right:6px;}
   .goes{font-size:13px;color:var(--muted);}
 
@@ -217,6 +219,12 @@
     padding:6px 12px;font-size:15px;text-align:left;border-radius:0;}
   .wx-opt:hover,.wx-opt:focus-visible{background:var(--wash);outline:none;}
   .wx-opt[aria-selected="true"]{background:var(--accent);color:#000;}
+  .mood-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .mood-opt{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:64px;border:2px solid var(--accent);
+    border-radius:18px;background:transparent;color:var(--ink);padding:9px 10px 7px;font-size:13px;}
+  .mood-opt:hover{background:var(--wash);}
+  .mood-opt[aria-checked="true"]{background:var(--accent);color:#000;}
+  .heart{display:block;width:27px;height:24px;image-rendering:pixelated;image-rendering:crisp-edges;}
 
   .modal .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;}
   .privacy{font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:2px dashed var(--accent);}
@@ -273,6 +281,7 @@
         <div id="list"></div>
         <div class="q-actions">
           <button class="pill-btn" id="sortBtn">Sort by date</button>
+          <button class="pill-btn" id="moodSortBtn">Sort by mood</button>
           <button class="pill-btn" id="clearBtn">Clear this month</button>
         </div>
         <div class="hint" id="note" aria-live="polite"></div>
@@ -306,6 +315,9 @@
       <button type="button" class="inp wx-btn" id="wxBtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="wxLabel wxBtn"></button>
       <ul class="wx-list" id="wxList" role="listbox" aria-labelledby="wxLabel" hidden></ul>
     </div>
+
+    <label class="f" id="moodLabel">Mood</label>
+    <div class="mood-row" id="moodRow" role="radiogroup" aria-labelledby="moodLabel"></div>
 
     <label class="f" for="mText">Entry</label>
     <textarea class="txt ruled" id="mText" placeholder="Write about today."></textarea>
@@ -489,7 +501,27 @@ WEATHER.forEach(({k})=>{
   WX_SRC[k] = cv.toDataURL('image/png');
 });
 const wxName = k => (WEATHER.find(w=>w.k===k)||WEATHER[0]).name;
+function spriteSrc(grid, pal){
+  const cv=document.createElement('canvas'); cv.width=grid[0].length; cv.height=grid.length;
+  const cx=cv.getContext('2d');
+  grid.forEach((row,y)=>[...row].forEach((c,x)=>{ if(c!=='.' && pal[c]){ cx.fillStyle=pal[c]; cx.fillRect(x,y,1,1); } }));
+  return cv.toDataURL('image/png');
+}
 const pxImg = (k, alt=wxName(k)) => `<img class="px" src="${WX_SRC[k]||WX_SRC.sun}" alt="${esc(alt)}">`;
+/* ───── Mood hearts ───── */
+const HEART = [".cc...cc.", "chcc.cccc", "chccccccc", "ccccccccd", ".cccccccd", "..ccccdd.", "...ccdd..", "....cd..."];
+const MOODS = [
+  { k:'great', name:'신남' },
+  { k:'good',  name:'좋음' },
+  { k:'okay',  name:'보통' },
+  { k:'sad',   name:'우울' },
+];
+const HEART_PAL = {"great": ["#4F8FE8", "#2F66B8"], "good": ["#4CC46A", "#2E9248"], "okay": ["#F5C842", "#D29E1A"], "sad": ["#E8505B", "#B42E3A"], "none": ["#C9C4C2", "#9E9896"]};
+const HEART_SRC = {};
+Object.entries(HEART_PAL).forEach(([k,[c,d]])=>{ HEART_SRC[k]=spriteSrc(HEART,{c,d,h:'#FFFFFF'}); });
+const moodName = k => (MOODS.find(x=>x.k===k)||{name:'기분 없음'}).name;
+const heartImg = k => `<img class="heart" src="${HEART_SRC[k]||HEART_SRC.none}" alt="">`;
+const MOOD_RANK = k => { const i=MOODS.findIndex(x=>x.k===k); return i<0 ? MOODS.length : i; };
 
 /* ───── Themes ───── */
 function setTheme(name, save=true){
@@ -536,7 +568,7 @@ function render(){
   const list = entries.filter(q=>monthOf(q.date)===cur);
   $('rangeTitle').textContent = monthLabel(cur);
   $('rangeCount').textContent = list.length ? `${list.length} entr${list.length>1?'ies':'y'}` : '';
-  $('clearBtn').disabled = !list.length; $('sortBtn').disabled = list.length<2;
+  $('clearBtn').disabled = !list.length; $('sortBtn').disabled = $('moodSortBtn').disabled = list.length<2;
   const box = $('list');
   if(!list.length){
     box.innerHTML = `<div class="empty-note">No entries for ${monthLabel(cur)} yet.<br>Tap “Upload” at the top to write one.</div>`;
@@ -549,6 +581,7 @@ function render(){
         <div class="q-left">
           <button class="x" data-rm="1" aria-label="Delete entry">×</button>
           <button class="wx-tap" data-wx="1" title="${wxName(q.wx)} · tap to change" aria-label="Weather: ${wxName(q.wx)}. Tap to change">${pxImg(q.wx,'')}</button>
+          <button class="wx-tap" data-mood="1" title="${moodName(q.mood)} · tap to change" aria-label="Mood: ${moodName(q.mood)}. Tap to change">${heartImg(q.mood)}</button>
         </div>
         <input class="ep-num" type="text" inputmode="numeric" value="${shortDate(q.date)}" data-f="date" aria-label="Date (YY/MM/DD)">
       </div>
@@ -581,6 +614,15 @@ $('list').addEventListener('click',e=>{
     wxBtn.setAttribute('aria-label', `Weather: ${wxName(q.wx)}. Tap to change`);
     return;
   }
+  const moodBtn = e.target.closest('[data-mood]');
+  if(moodBtn){
+    const q = rowEntry(moodBtn); if(!q) return;
+    const i = MOODS.findIndex(x=>x.k===q.mood);
+    q.mood = MOODS[(i+1)%MOODS.length].k; store.set('entries',entries);
+    moodBtn.innerHTML = heartImg(q.mood); moodBtn.title = `${moodName(q.mood)} · tap to change`;
+    moodBtn.setAttribute('aria-label', `Mood: ${moodName(q.mood)}. Tap to change`);
+    return;
+  }
   if(!e.target.dataset.rm) return;
   const id = e.target.closest('.q-row').dataset.id;
   entries = entries.filter(x=>x.id!==id); store.set('entries',entries); render();
@@ -591,9 +633,23 @@ $('sortBtn').onclick = ()=>{
   entries.sort(byDate);
   store.set('entries',entries); render(); note('Sorted by date.');
 };
+$('moodSortBtn').onclick = ()=>{
+  entries.sort((a,b)=> MOOD_RANK(a.mood)-MOOD_RANK(b.mood) || byDate(a,b));
+  store.set('entries',entries); render(); note('Sorted by mood: 신남 → 좋음 → 보통 → 우울.');
+};
 twoStep($('clearBtn'),'Tap again to clear', ()=>{
   entries = entries.filter(q=>monthOf(q.date)!==cur); store.set('entries',entries); render();
 });
+
+/* ───── Mood picker ───── */
+let pickedMood = 'okay';
+$('moodRow').innerHTML = MOODS.map(x=>
+  `<button type="button" class="mood-opt" role="radio" data-k="${x.k}" aria-checked="false">${heartImg(x.k)}<span>${x.name}</span></button>`).join('');
+function setMood(k){
+  pickedMood = k;
+  $('moodRow').querySelectorAll('.mood-opt').forEach(o=>o.setAttribute('aria-checked', o.dataset.k===k));
+}
+$('moodRow').addEventListener('click',e=>{ const o=e.target.closest('.mood-opt'); if(o) setMood(o.dataset.k); });
 
 /* ───── Weather dropdown ───── */
 let pickedWx = 'sun';
@@ -626,7 +682,7 @@ function openModal(){
   const t = new Date();
   $('mY').value = t.getFullYear(); $('mM').value = t.getMonth()+1; $('mD').value = t.getDate();
   $('mText').value = ''; $('mErr').textContent = '';
-  setWx('sun'); wxOpen(false); updateGoes();
+  setWx('sun'); wxOpen(false); setMood('okay'); updateGoes();
   $('overlay').classList.add('open');
   $('mY').focus(); $('mY').select();
 }
@@ -646,7 +702,7 @@ $('mSave').onclick = ()=>{
   if(!date){ $('mErr').textContent='That date doesn’t exist. Check the year, month and day.'; $('mY').focus(); return; }
   if(monthOf(date)<0){ $('mErr').textContent=rangeErr(); $('mY').focus(); return; }
   if(!text){ $('mErr').textContent='The entry is empty.'; $('mText').focus(); return; }
-  entries.push({ id:uid(), date, wx:pickedWx, text, at:Date.now() });
+  entries.push({ id:uid(), date, wx:pickedWx, mood:pickedMood, text, at:Date.now() });
   entries.sort(byDate);
   store.set('entries',entries);
   closeModal();
@@ -686,7 +742,7 @@ $('importFile').addEventListener('change', e=>{
       if(j.app!=='diary' || !Array.isArray(j.entries)) throw new Error();
       entries = j.entries
         .filter(q=>q && typeof q.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(q.date) && typeof q.text==='string')
-        .map(q=>({ id:q.id||uid(), date:q.date, wx: WX_SRC[q.wx] ? q.wx : 'sun', text:q.text, at:Number(q.at)||Date.now() }));
+        .map(q=>({ id:q.id||uid(), date:q.date, wx: WX_SRC[q.wx] ? q.wx : 'sun', mood: MOODS.some(x=>x.k===q.mood) ? q.mood : undefined, text:q.text, at:Number(q.at)||Date.now() }));
       await store.set('entries',entries);
       if(['lukas','leonard','orange'].includes(j.theme)) setTheme(j.theme);
       render();

@@ -335,7 +335,7 @@
 </div>
 
 <!-- Random entry pop-up -->
-<div class="pop" id="pop" role="dialog" aria-modal="true" aria-label="Random diary entry">
+<div class="pop long" id="pop" role="dialog" aria-modal="true" aria-label="Random diary entry">
   <div class="pop-stage">
     <img class="pop-char" id="popChar" alt="">
     <div class="pop-bubble"><div class="pop-text" id="popBubble"></div></div>
@@ -734,7 +734,7 @@ function showPop(){
     lastEntry = q.id; line = shorten(q.text);
   }
   bub.textContent = line;
-  $('pop').classList.toggle('long', Array.from(line).length > LONG_AT);
+  $('pop').classList.add('long');   // bubble always above, character always in the same spot
   bub.scrollTop = 0;
   [img,bub.parentElement].forEach(el=>{ el.style.animation='none'; void el.offsetWidth; el.style.animation=''; });
   $('pop').classList.add('open');

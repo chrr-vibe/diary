@@ -281,6 +281,7 @@
         <div id="list"></div>
         <div class="q-actions">
           <button class="pill-btn" id="sortBtn">Sort by date</button>
+          <button class="pill-btn" id="sortRevBtn">Sort by date (newest first)</button>
           <button class="pill-btn" id="moodSortBtn">Sort by mood</button>
           <button class="pill-btn" id="clearBtn">Clear this month</button>
         </div>
@@ -568,7 +569,7 @@ function render(){
   const list = entries.filter(q=>monthOf(q.date)===cur);
   $('rangeTitle').textContent = monthLabel(cur);
   $('rangeCount').textContent = list.length ? `${list.length} entr${list.length>1?'ies':'y'}` : '';
-  $('clearBtn').disabled = !list.length; $('sortBtn').disabled = $('moodSortBtn').disabled = list.length<2;
+  $('clearBtn').disabled = !list.length; $('sortBtn').disabled = $('sortRevBtn').disabled = $('moodSortBtn').disabled = list.length<2;
   const box = $('list');
   if(!list.length){
     box.innerHTML = `<div class="empty-note">No entries for ${monthLabel(cur)} yet.<br>Tap “Upload” at the top to write one.</div>`;
@@ -632,6 +633,10 @@ window.addEventListener('resize',()=>document.querySelectorAll('.q-text').forEac
 $('sortBtn').onclick = ()=>{
   entries.sort(byDate);
   store.set('entries',entries); render(); note('Sorted by date.');
+};
+$('sortRevBtn').onclick = ()=>{
+  entries.sort((a,b)=> byDate(b,a));
+  store.set('entries',entries); render(); note('Sorted by date, newest first.');
 };
 $('moodSortBtn').onclick = ()=>{
   entries.sort((a,b)=> MOOD_RANK(a.mood)-MOOD_RANK(b.mood) || byDate(a,b));

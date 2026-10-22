@@ -1,6 +1,6 @@
 /* Diary service worker
    Bump VERSION whenever you upload a new index.html so phones pick up the update. */
-const VERSION = 'diary-v5';
+const VERSION = 'diary-v6';
 const ASSETS = [
   './',
   './index.html',

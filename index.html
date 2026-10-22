@@ -538,6 +538,7 @@ let cur = 0;           // current month index
 let win = 0;           // which group of month tabs is showing
 const N_WIN = Math.ceil(N_MONTHS / PER_WIN);
 const byDate = (a,b)=> a.date<b.date ? -1 : a.date>b.date ? 1 : a.at-b.at;
+const newestFirst = (a,b)=> byDate(b,a);   // default order: most recent entry on top
 
 /* ───── Tabs ───── */
 function renderTabs(){
@@ -635,11 +636,11 @@ $('sortBtn').onclick = ()=>{
   store.set('entries',entries); render(); note('Sorted by date.');
 };
 $('sortRevBtn').onclick = ()=>{
-  entries.sort((a,b)=> byDate(b,a));
+  entries.sort(newestFirst);
   store.set('entries',entries); render(); note('Sorted by date, newest first.');
 };
 $('moodSortBtn').onclick = ()=>{
-  entries.sort((a,b)=> MOOD_RANK(a.mood)-MOOD_RANK(b.mood) || byDate(a,b));
+  entries.sort((a,b)=> MOOD_RANK(a.mood)-MOOD_RANK(b.mood) || newestFirst(a,b));
   store.set('entries',entries); render(); note('Sorted by mood: 신남 → 좋음 → 보통 → 우울.');
 };
 twoStep($('clearBtn'),'Tap again to clear', ()=>{
@@ -708,7 +709,7 @@ $('mSave').onclick = ()=>{
   if(monthOf(date)<0){ $('mErr').textContent=rangeErr(); $('mY').focus(); return; }
   if(!text){ $('mErr').textContent='The entry is empty.'; $('mText').focus(); return; }
   entries.push({ id:uid(), date, wx:pickedWx, mood:pickedMood, text, at:Date.now() });
-  entries.sort(byDate);
+  entries.sort(newestFirst);
   store.set('entries',entries);
   closeModal();
   goToMonth(monthOf(date));
@@ -748,6 +749,7 @@ $('importFile').addEventListener('change', e=>{
       entries = j.entries
         .filter(q=>q && typeof q.date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(q.date) && typeof q.text==='string')
         .map(q=>({ id:q.id||uid(), date:q.date, wx: WX_SRC[q.wx] ? q.wx : 'sun', mood: MOODS.some(x=>x.k===q.mood) ? q.mood : undefined, text:q.text, at:Number(q.at)||Date.now() }));
+      entries.sort(newestFirst);
       await store.set('entries',entries);
       if(['lukas','leonard','orange'].includes(j.theme)) setTheme(j.theme);
       render();
@@ -809,6 +811,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && $('pop').classL
 (async function init(){
   setTheme((await store.get('theme')) || 'lukas', false);
   entries = (await store.get('entries')) || [];
+  entries.sort(newestFirst);
   const t = new Date(), today = monthOf(`${t.getFullYear()}-${p2(t.getMonth()+1)}-01`);
   const c = await store.get('cur');
   goToMonth(today>=0 ? today : (Number.isInteger(c) && c>=0 && c<N_MONTHS ? c : 0));
